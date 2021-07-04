@@ -1,0 +1,4 @@
+__pycache__
+app/app/address_data/*.csv
+app/celerybeat.pid
+app/celerybeat-schedule.db

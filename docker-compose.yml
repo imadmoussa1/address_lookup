@@ -1,0 +1,151 @@
+version: "3.5"
+services:
+
+  backend:
+    build:
+      args:
+        env: dev
+      context: ./backend
+      dockerfile: backend.dockerfile
+    container_name: address_api
+    restart: always
+    depends_on:
+      - postgres
+      - elasticsearch
+    environment:
+      SENTRY_DSN: ""
+      USERS_OPEN_REGISTRATION: "False"
+    secrets:
+      - postgres_db_uri
+      - celery_backend_db_uri
+      - elasticsearch_uri
+      - mongo_db_uri
+    env_file:
+      - ./configs/global.env
+    ports:
+      - 8080:80
+    volumes:
+      - ./backend/app:/app:rw
+    networks:
+      - main
+      - elastic
+      - mongo
+
+  celeryworker:
+    build:
+      args:
+        env: dev
+      context: ./backend
+      dockerfile: celeryworker.dockerfile
+    container_name: address_celeryworker
+    restart: always
+    depends_on:
+      - postgres
+      - rabbitmq
+      - elasticsearch
+    environment:
+      JUPYTER: jupyter lab --ip=0.0.0.0 --allow-root --NotebookApp.custom_display_url=http://127.0.0.1:8888
+      SENTRY_DSN: ""
+      USERS_OPEN_REGISTRATION: "False"
+    secrets:
+      - postgres_db_uri
+      - celery_backend_db_uri
+      - elasticsearch_uri
+      - mongo_db_uri
+    env_file:
+      - ./configs/global.env
+    volumes:
+      - ./backend/app:/app:rw
+    networks:
+      - main
+      - elastic
+      - mongo
+ 
+
+  postgres:
+    image: postgres:12
+    container_name: postgres
+    restart: always
+    secrets:
+      - postgres_admin_username
+      - postgres_admin_password
+      - postgres_db_name
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER_FILE: /run/secrets/postgres_admin_username
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db_name
+      POSTGRES_SERVER: postgres
+    networks:
+      - main
+    volumes:
+      - ./data/postgresql_data:/var/lib/postgresql/data/pgdata
+
+  rabbitmq:
+    image: rabbitmq:3
+    networks:
+      - main
+
+  mongo:
+    image: mongo
+    hostname: mongo
+    container_name: mongo
+    ports:
+      - 27017:27017
+    secrets:
+      - mongo_admin_username
+      - mongo_admin_password
+    environment:
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo_admin_username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_admin_password
+    networks:
+      - mongo
+    volumes:
+      - ./data/mongo_data:/data/db
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    cap_add:
+      - ALL
+    volumes:
+      - ./configs/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./data/esdata:/usr/share/elasticsearch/data
+      # - ./data/esdata_logs:/usr/share/elasticsearch/logs
+    networks:
+      - elastic
+
+networks:
+  main:
+    driver: bridge
+  elastic:
+    driver: bridge
+  mongo:
+    driver: bridge
+
+secrets:
+  mongo_db_uri:
+    file: ./secrets/mongo_db_uri.txt
+  mongo_admin_username:
+    file: ./secrets/mongo_admin_username.txt
+  mongo_admin_password:
+    file: ./secrets/mongo_admin_password.txt
+  elasticsearch_uri:
+    file: ./secrets/elasticsearch_uri.txt
+  postgres_admin_username:
+    file: ./secrets/postgres_admin_username.txt
+  postgres_admin_password:
+    file: ./secrets/postgres_admin_password.txt
+  postgres_db_name:
+    file: ./secrets/postgres_db_name.txt
+  postgres_db_uri:
+    file: ./secrets/postgres_db_uri.txt
+  celery_backend_db_uri:
+    file: ./secrets/celery_backend_db_uri.txt
