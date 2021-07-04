@@ -13,12 +13,12 @@ docker-compose -f "docker-compose.yml" up -d --build
 ## Project details
 I am using fastAPI template with celery.
 
-The ETL pipeline celery Task in `address_lookup/backend/app/app/worker.py`, this pipeline can start Automatically (Scheduled Task) or using the API.
+The ETL pipeline is a celery Task in `address_lookup/backend/app/app/worker.py`, this pipeline can start Automatically (Scheduled Task) or called it using the API.
 
 This pipeline save data to MongoDB and elasticsearch, (details of mongodb and elastic session are under `address_lookup/backend/app/app/db`)
 
 The search query for elastic to find the address we looking for, can be called using the API in
-`address_lookup/backend/app/app/api/api_v1/endpoints\utils.py`
+`address_lookup/backend/app/app/api/api_v1/endpoints/utils.py`
 
 ## User for login for testing
 user=imad@admin.com
